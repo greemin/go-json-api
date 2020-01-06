@@ -5,4 +5,4 @@ A simple JSON API that accepts comments and saves them in a JSON file
 go run server.go
 ```
 
-Open Browser at localhost:8080````
+Open Browser at localhost:8080
