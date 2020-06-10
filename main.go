@@ -18,7 +18,7 @@ func check (e error) {
 }
 
 type Comment struct {
-  ID string `json:"id`
+  Id string `json:"id`
   UserName string `json:"username"`
   Text string `json:"text"`
   Date time.Time `json:"date"`
@@ -27,6 +27,7 @@ type Comment struct {
 
 type Response struct {
   Success bool `json:"success"`
+  Count int `json:count"`
 }
 
 func loadCommentsFromFile(path string) []Comment {
@@ -51,6 +52,7 @@ func writeCommentsToFile(path string, comments []Comment) bool {
 }
 
 func commentHandler(w http.ResponseWriter, r *http.Request) {
+  fmt.Println(r.Method, r.URL.Path, r.RemoteAddr)
   switch r.Method {
     case "GET": {
       file, fileError := ioutil.ReadFile("comments.json")
@@ -61,10 +63,11 @@ func commentHandler(w http.ResponseWriter, r *http.Request) {
       d := json.NewDecoder(r.Body)
       newComment := &Comment{}
 
+      
       decodeError := d.Decode(newComment)
       check(decodeError)
       newComment.Date = time.Now()
-      newComment.ID = newComment.Date.String() + newComment.UserName
+      newComment.Id = newComment.Date.Format(time.RFC3339) + "-" + newComment.UserName
 
       allComments := loadCommentsFromFile("comments.json")
       allComments = append(allComments, *newComment)
@@ -72,25 +75,34 @@ func commentHandler(w http.ResponseWriter, r *http.Request) {
       success := writeCommentsToFile("comments.json", allComments)
       if success == true {
         resultJSON, _ := json.Marshal(newComment)
+        fmt.Println("New Comment: " + newComment.Text, "(" + newComment.Id + ")")
         w.Write(resultJSON)
       } 
     }
     case "DELETE": {
-      response := &Response{ Success: false }
+      response := &Response{ Success: false, Count: 0 }
       query := r.URL.Query()
       id := query.Get("id")
       fmt.Println("/comment DELETE QUERY", query.Get("id"))
 
       allComments := loadCommentsFromFile("comments.json")
+      count := 0
       for i := 0; i < len(allComments);i++ {
-        if allComments[i].ID == id {
-          tempVar := allComments[len(allComments)-1]
-          allComments[len(allComments)-1] = allComments[i]
-          allComments[i] = tempVar
-          allComments = allComments[(len(allComments)-1):]
+        if allComments[i].Id == id {
+          count++
+
+          if len(allComments) > 1 {
+            tempVar := allComments[len(allComments)-1]
+            allComments[i] = tempVar
+            allComments[len(allComments)-1] = allComments[i]
+            allComments = allComments[(len(allComments)-1):]
+          } else {
+            allComments = []Comment{}
+          }
 
           success := writeCommentsToFile("comments.json", allComments)
           response.Success = success
+          response.Count = count
           break
         }
       }
